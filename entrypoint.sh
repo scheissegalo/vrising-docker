@@ -14,6 +14,7 @@ if [ -z "$SKIP_UPDATE" ] || [ ! -f "${s}/VRisingServer.exe" ]; then
     if ! (r=5; while ! /usr/bin/steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$s" +login anonymous +app_update 1829350 validate +quit ; do
               ((--r)) || exit
               echo "[entrypoint] something went wrong, let's wait 5 seconds and retry"
+              rm -rf "${s}/steamapps"
               sleep 5
           done) ; then
         echo "[entrypoint] failed updating with steamcmd!"
