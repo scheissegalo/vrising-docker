@@ -75,10 +75,14 @@ For public listing, use the root `docker-compose.yml` with ports in the Steam ra
 
 ## Layout
 
-| Path    | Purpose                          |
-| ------- | -------------------------------- |
-| `server/` | SteamCMD install (gitignored)  |
-| `data/`   | Saves, settings, `.installed`  |
-| `mods/`   | Optional mod files             |
+| Path | Purpose | Survives `docker compose down`? |
+| ---- | ------- | --------------------------------- |
+| `data/Saves/` | **World + character saves** (vanilla game) | Yes (bind mount) |
+| `data/Settings/` | Server host/game settings | Yes |
+| `mods/BepInEx/config/` | BepInEx + mod configs, Bloodcraft player toggles | Yes (synced from server on each start) |
+| `mods/BepInEx/plugins/` | Mod DLLs you install | Yes |
+| `server/BepInEx/` | Runtime copy of mods (regenerated each start) | Yes on disk, but **reset from `mods/` every boot** |
 
-To wipe and reinstall: `docker compose down` then remove `server/`, `data/`, and `mods/`.
+**Important:** Never delete `data/` unless you want a fresh world. `docker compose down` alone does **not** remove bind-mounted data.
+
+Mod configs under `server/BepInEx/config/` used to be lost on restart; the entrypoint now copies them back to `mods/BepInEx/config/` automatically before each boot.

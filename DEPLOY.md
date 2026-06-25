@@ -114,9 +114,22 @@ No SteamCMD re-download if `server/VRisingServer.exe` and `data/.installed` are 
 | Script | Purpose |
 | ------ | ------- |
 | [`scripts/install-mods.sh`](scripts/install-mods.sh) | Install BepInEx pack into `mods/` (use `--profile dev` for dev) |
-| [`scripts/sync-mod-configs.sh`](scripts/sync-mod-configs.sh) | Copy generated configs from `server/` back to `mods/` |
+| [`scripts/sync-mod-configs.sh`](scripts/sync-mod-configs.sh) | Manually copy configs from `server/` to `mods/` (optional — entrypoint does this on startup) |
 
-## Troubleshooting
+## Where data is stored
+
+| What | Path (prod) | Path (dev) |
+| ---- | ----------- | ---------- |
+| World / character saves | `data/Saves/` | `dev/data/Saves/` |
+| Server settings | `data/Settings/` | `dev/data/Settings/` |
+| Mod DLLs + configs | `mods/BepInEx/` | `dev/mods/BepInEx/` |
+
+These directories are bind-mounted and **survive** `docker compose down`. They are gitignored but remain on the host disk.
+
+Do **not** use `docker compose down -v` unless you intend to wipe data (not applicable to bind mounts, but avoid destructive cleanup of these folders).
+
+Mod configs generated at runtime are auto-synced from `server/BepInEx/config/` → `mods/BepInEx/config/` on each container start when `ENABLE_MODS` is set.
+
 
 | Symptom | Check |
 | ------- | ----- |

@@ -74,6 +74,11 @@ if [ ! -f "$p/Settings/ServerHostSettings.json" ]; then
 fi
 
 log_server "Cleaning up old mods (if any)..."
+if [ -n "${ENABLE_MODS:-}" ] && [ -d "$s/BepInEx/config" ]; then
+    log_server "Persisting mod configs to mods volume..."
+    mkdir -p "$m/BepInEx/config"
+    cp -a "$s/BepInEx/config/." "$m/BepInEx/config/"
+fi
 rm -rf "$s/BepInEx"
 rm -rf "$s/dotnet"
 rm -f "$s/doorstop_config.ini"
