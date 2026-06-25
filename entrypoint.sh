@@ -80,6 +80,11 @@ rm -f "$s/doorstop_config.ini"
 rm -f "$s/winhttp.dll"
 
 if [ -n "${ENABLE_MODS:-}" ]; then
+    if [ ! -f "$m/winhttp.dll" ] || [ ! -d "$m/BepInEx" ]; then
+        log_server "ERROR: ENABLE_MODS is set but ${m} is missing BepInEx."
+        log_server "Run: ./scripts/install-mods.sh /path/to/BepInExPack.zip [--profile dev]"
+        exit 1
+    fi
     log_server "Setting up mods..."
     cp -r "$m/BepInEx" "$s/BepInEx"
     cp -r "$m/dotnet" "$s/dotnet"

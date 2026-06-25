@@ -27,6 +27,10 @@ docker compose up --build
 
 See [`dev/README.md`](dev/README.md) for connecting from the game client.
 
+## Deploying on a new server
+
+See **[DEPLOY.md](DEPLOY.md)** for clone-to-run steps, mod setup, and migrating `server/`, `data/`, and `mods/` to another host.
+
 ## Ports
 
 

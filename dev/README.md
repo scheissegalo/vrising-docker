@@ -26,26 +26,32 @@ Dev uses the default game ports **9876/9877**, matching the original repo. The V
 
 ## Mods (BepInEx)
 
-`ENABLE_MODS: 1` is already set in `docker-compose.yml`. Install the BepInEx pack into `mods/`:
+`ENABLE_MODS: 1` is already set in `docker-compose.yml`.
+
+From the repo root (works on any fresh clone):
 
 ```bash
-./install-mods.sh
-# or: ./install-mods.sh /path/to/BepInEx-BepInExPack_V_Rising-*.zip
+./scripts/install-mods.sh /path/to/BepInEx-BepInExPack_V_Rising-*.zip --profile dev
+cp /path/to/*.dll dev/mods/BepInEx/plugins/
+cd dev && docker compose up -d --build
 ```
 
-Then restart:
+After the first modded boot, persist generated configs:
 
 ```bash
-docker compose up --build --force-recreate
+docker compose down
+../scripts/sync-mod-configs.sh --profile dev
+docker compose up -d
 ```
 
-Modded startup takes several extra minutes. Check BepInEx loaded:
+Check mods loaded:
 
 ```bash
+grep 'Loading \[' server/BepInEx/LogOutput.log
 tail -f server/BepInEx/LogOutput.log
 ```
 
-Look for `Chainloader` startup messages. The pack only provides the loader — add plugins under `mods/BepInEx/plugins/` before restart if needed.
+See [DEPLOY.md](../DEPLOY.md) for full deployment and migration steps.
 
 ## Useful commands
 
