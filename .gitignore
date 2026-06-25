@@ -1,3 +1,8 @@
 data/
 server/
 mods/
+
+# local dev runtime (compose file in dev/ is tracked)
+dev/server/
+dev/data/
+dev/mods/

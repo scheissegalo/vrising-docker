@@ -1,5 +1,6 @@
 services:
   vrising:
+    build: .
     image: andrewsav/vrising
     container_name: vrising
     restart: unless-stopped
@@ -7,6 +8,7 @@ services:
     network_mode: bridge
     environment:
       TZ: Pacific/Auckland
+      #SERVERNAME: "My V Rising Server"
       VR_SERVER_NAME: V Rising Dedicated Server
       VR_GAME_PORT: "27017"
       VR_QUERY_PORT: "27018"

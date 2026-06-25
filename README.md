@@ -11,7 +11,21 @@ I strongly suggest to start with [official V Rising dedicate server instructions
 | Variable    | Description                                                  |
 | ----------- | ------------------------------------------------------------ |
 | ENABLE_MODS | if provided, mods will be enabled for the server (see below about the mods support) |
-| SKIP_UPDATE | if provided, skips the Steam update process on container startup |
+| SKIP_UPDATE | if provided, skips the Steam update process on container startup when server files already exist |
+| SERVERNAME  | optional display name logged at server start (game settings use `VR_*` variables) |
+
+On first start, SteamCMD downloads the server files and writes a marker file (`persistentdata/.installed`). Subsequent container starts skip the update unless server files are missing. Setting `SKIP_UPDATE` also skips the update when `VRisingServer.exe` is present.
+
+## Local development
+
+For local testing (separate data dirs, not committed), use the [`dev/`](dev/) folder:
+
+```bash
+cd dev
+docker compose up --build
+```
+
+See [`dev/README.md`](dev/README.md) for connecting from the game client.
 
 ## Ports
 

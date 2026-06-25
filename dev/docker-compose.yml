@@ -1,0 +1,29 @@
+services:
+  vrising:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: andrewsav/vrising:dev
+    container_name: vrising-dev
+    restart: "no"
+    init: true
+    environment:
+      TZ: UTC
+      SERVERNAME: "V Rising Dev Server"
+      VR_SERVER_NAME: V Rising Dev Server
+      VR_GAME_PORT: "9876"
+      VR_QUERY_PORT: "9877"
+      #VR_LAN_MODE: "true"
+      #VR_LIST_ON_STEAM: "true"
+      #VR_LIST_ON_EOS: "true"
+      #VR_MAX_USERS: "10"
+      #VR_PASSWORD: ""
+      ENABLE_MODS: 1
+      #SKIP_UPDATE: 1
+    volumes:
+      - ./server:/mnt/vrising/server
+      - ./data:/mnt/vrising/persistentdata
+      - ./mods:/mnt/vrising/mods
+    ports:
+      - "9876:9876/udp"
+      - "9877:9877/udp"
