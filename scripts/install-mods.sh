@@ -10,7 +10,7 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [path-to-BepInExPack.zip] [--profile dev|prod]
 
-Installs BepInEx into the mods volume and builds the Docker image if needed.
+Installs BepInEx into the mods volume and ensures the Docker image is available.
 
 Profiles:
   prod (default)  ${REPO_ROOT}/mods       + root docker-compose.yml
@@ -43,12 +43,12 @@ case "$PROFILE" in
     dev)
         MODS_DIR="${MODS_DIR:-${REPO_ROOT}/dev/mods}"
         COMPOSE_FILE="${REPO_ROOT}/dev/docker-compose.yml"
-        IMAGE="andrewsav/vrising:dev"
+        IMAGE="scheissegalo/vrising:dev"
         ;;
     prod)
         MODS_DIR="${MODS_DIR:-${REPO_ROOT}/mods}"
         COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
-        IMAGE="andrewsav/vrising"
+        IMAGE="scheissegalo/vrising:latest"
         ;;
     *)
         echo "Unknown profile: $PROFILE (use dev or prod)" >&2
@@ -67,8 +67,13 @@ fi
 
 mkdir -p "$MODS_DIR"
 
-echo "[install-mods] Building image from ${COMPOSE_FILE}..."
-docker compose -f "$COMPOSE_FILE" build
+if [ "$PROFILE" = dev ]; then
+    echo "[install-mods] Building image from ${COMPOSE_FILE}..."
+    docker compose -f "$COMPOSE_FILE" build
+else
+    echo "[install-mods] Pulling ${IMAGE}..."
+    docker pull "$IMAGE"
+fi
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -99,5 +104,5 @@ echo "  Next:      add plugin DLLs to ${MODS_DIR}/BepInEx/plugins/ if needed"
 if [ "$PROFILE" = dev ]; then
     echo "  Start:     cd dev && docker compose up -d --build"
 else
-    echo "  Start:     docker compose up -d --build   (set ENABLE_MODS: 1 in compose first)"
+    echo "  Start:     docker compose up -d   (set ENABLE_MODS: 1 in compose first)"
 fi

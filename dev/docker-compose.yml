@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    image: andrewsav/vrising:dev
+    image: scheissegalo/vrising:dev
     container_name: vrising-dev
     restart: "no"
     init: true

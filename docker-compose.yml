@@ -1,7 +1,7 @@
 services:
   vrising:
-    build: .
-    image: andrewsav/vrising
+    image: scheissegalo/vrising:latest
+    # build: .   # uncomment to build locally instead of pulling from Docker Hub
     container_name: vrising
     restart: unless-stopped
     init: true

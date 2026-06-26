@@ -1,24 +1,146 @@
-# Dockerized V Rising dedicated server in an Ubuntu 22.04 container with Wine
+# V Rising dedicated server (Docker) — Bloodcraft
 
-[![GitHub Actions](https://github.com/AndrewSav/vrising-docker/actions/workflows/main.yml/badge.svg)](https://github.com/AndrewSav/vrising-docker/actions)
-[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/andrewsav/vrising?sort=semver)](https://hub.docker.com/r/andrewsav/vrising/tags)
+[![GitHub Actions](https://github.com/scheissegalo/vrising-docker/actions/workflows/main.yml/badge.svg)](https://github.com/scheissegalo/vrising-docker/actions)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/scheissegalo/vrising?sort=semver)](https://hub.docker.com/r/scheissegalo/vrising/tags)
 
-I strongly suggest to start with [official V Rising dedicate server instructions](https://github.com/StunlockStudios/vrising-dedicated-server-instructions), they list and explain the server settings, their different source and precedence, I will assume you are already familiar with these below. The environment variables mentioned there you can directly use with this docker container.
+Docker image for a **V Rising dedicated server with BepInEx mods**, tuned for running **[Bloodcraft](https://thunderstore.io/c/v-rising/p/Deca/Bloodcraft/)**. The container copies mods from a host `mods/` folder into the game install on each start and **automatically syncs generated mod configs back into `mods/BepInEx/config/`** so Bloodcraft settings and player data survive restarts and image updates.
+
+Pre-built images: [`scheissegalo/vrising`](https://hub.docker.com/r/scheissegalo/vrising) on Docker Hub.
+
+For server settings and `VR_*` environment variables, see the [official V Rising dedicated server instructions](https://github.com/StunlockStudios/vrising-dedicated-server-instructions).
+
+## Quickstart
+
+Requirements: Linux host, Docker, Docker Compose v2, UDP ports open (~4 GB disk for the game download).
+
+### Option A — Docker Hub (recommended for production)
+
+Pull the published image; no local build.
+
+```bash
+git clone https://github.com/scheissegalo/vrising-docker.git
+cd vrising-docker
+
+# Install BepInEx into mods/ and add Bloodcraft (+ dependencies)
+./scripts/install-mods.sh /path/to/BepInEx-BepInExPack_V_Rising-*.zip
+cp /path/to/Bloodcraft.dll mods/BepInEx/plugins/
+cp /path/to/VampireCommandFramework.dll mods/BepInEx/plugins/
+
+# Uncomment ENABLE_MODS: 1 in docker-compose.yml
+docker compose pull
+docker compose up -d
+
+docker compose logs -f
+```
+
+Or use a minimal compose file without cloning the full repo:
+
+```yaml
+services:
+  vrising:
+    image: scheissegalo/vrising:latest
+    container_name: vrising
+    restart: unless-stopped
+    init: true
+    environment:
+      ENABLE_MODS: 1
+      VR_SERVER_NAME: My Bloodcraft Server
+      VR_GAME_PORT: "27017"
+      VR_QUERY_PORT: "27018"
+    volumes:
+      - ./server:/mnt/vrising/server
+      - ./data:/mnt/vrising/persistentdata
+      - ./mods:/mnt/vrising/mods
+    ports:
+      - "27017:27017/udp"
+      - "27018:27018/udp"
+```
+
+```bash
+docker compose up -d
+```
+
+First boot downloads the server via SteamCMD into `server/` and creates saves/settings in `data/`. Mod configs generated at runtime are copied into `mods/BepInEx/config/` on every container start.
+
+Updates:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### Option B — Build from GitHub
+
+Clone this repo and build the image locally (useful when changing the Dockerfile or before a release is tagged):
+
+```bash
+git clone https://github.com/scheissegalo/vrising-docker.git
+cd vrising-docker
+
+./scripts/install-mods.sh /path/to/BepInEx-BepInExPack_V_Rising-*.zip
+cp /path/to/Bloodcraft.dll mods/BepInEx/plugins/
+cp /path/to/VampireCommandFramework.dll mods/BepInEx/plugins/
+
+# Uncomment ENABLE_MODS: 1 and build: . in docker-compose.yml
+docker compose up -d --build
+
+docker compose logs -f
+```
+
+### Option C — Docker CLI
+
+```bash
+mkdir -p server data mods
+# populate mods/ first (see Bloodcraft setup below)
+
+docker pull scheissegalo/vrising:latest
+
+docker run -d --name vrising \
+  --init \
+  --restart unless-stopped \
+  -e ENABLE_MODS=1 \
+  -e VR_SERVER_NAME="My Bloodcraft Server" \
+  -e VR_GAME_PORT=27017 \
+  -e VR_QUERY_PORT=27018 \
+  -v "$(pwd)/server:/mnt/vrising/server" \
+  -v "$(pwd)/data:/mnt/vrising/persistentdata" \
+  -v "$(pwd)/mods:/mnt/vrising/mods" \
+  -p 27017:27017/udp \
+  -p 27018:27018/udp \
+  scheissegalo/vrising:latest
+```
+
+See **[DEPLOY.md](DEPLOY.md)** for migrating `server/`, `data/`, and `mods/` to another host.
+
+## Bloodcraft setup
+
+1. Install the BepInEx pack into `mods/`:
+
+```bash
+./scripts/install-mods.sh /path/to/BepInEx-BepInExPack_V_Rising-*.zip
+```
+
+2. Copy plugin DLLs into `mods/BepInEx/plugins/` (Bloodcraft and its dependencies from [Thunderstore](https://thunderstore.io/c/v-rising/p/Deca/Bloodcraft/)).
+
+3. Set `ENABLE_MODS=1` (or `ENABLE_MODS: 1` in compose) and start the container.
+
+4. After the first modded boot (~5–10 min extra), edit configs under `mods/BepInEx/config/` — the entrypoint syncs configs from the game install into that folder on every start, so changes there persist across restarts.
+
+Alternative mod install: export an r2modman profile and use [r2modman-headless](https://github.com/mpawlowski/r2modman-headless) into `./mods` (see [Mods support](#mods-support) below).
 
 ## Environment variables
 
-
 | Variable    | Description                                                  |
 | ----------- | ------------------------------------------------------------ |
-| ENABLE_MODS | if provided, mods will be enabled for the server (see below about the mods support) |
-| SKIP_UPDATE | if provided, skips the Steam update process on container startup when server files already exist |
-| SERVERNAME  | optional display name logged at server start (game settings use `VR_*` variables) |
+| ENABLE_MODS | Enables BepInEx; copies `mods/` into the server install and persists configs back to `mods/BepInEx/config/` |
+| SKIP_UPDATE | Skips SteamCMD update on startup when server files already exist |
+| SERVERNAME  | Optional display name logged at server start (game settings use `VR_*` variables) |
 
-On first start, SteamCMD downloads the server files and writes a marker file (`persistentdata/.installed`). Subsequent container starts skip the update unless server files are missing. Setting `SKIP_UPDATE` also skips the update when `VRisingServer.exe` is present.
+On first start, SteamCMD downloads server files and writes `data/.installed`. Later starts skip the update unless files are missing. `SKIP_UPDATE` also skips when `VRisingServer.exe` is present.
 
 ## Local development
 
-For local testing (separate data dirs, not committed), use the [`dev/`](dev/) folder:
+For local testing (ports 9876/9877, isolated under `dev/`):
 
 ```bash
 cd dev
@@ -27,59 +149,50 @@ docker compose up --build
 
 See [`dev/README.md`](dev/README.md) for connecting from the game client.
 
-## Deploying on a new server
-
-See **[DEPLOY.md](DEPLOY.md)** for clone-to-run steps, mod setup, and migrating `server/`, `data/`, and `mods/` to another host.
-
 ## Ports
-
 
 | Exposed Container port | Type | Default |
 | ------------------------ | ------ | --------- |
-| 9876                   | UDP  | ✔️    |
-| 9877                   | UDP  | ✔️    |
+| 9876                   | UDP  | dev     |
+| 9877                   | UDP  | dev     |
+| 27017                  | UDP  | production compose |
+| 27018                  | UDP  | production compose |
 
-*Note: it has been reported that in order to be listed in the servers list, the ports must be in the steam range **27015-27050**, and the default ports won't work for this purpose*
+For Steam server browser listing, use ports in **27015–27050** and enable `VR_LIST_ON_STEAM` / `VR_LIST_ON_EOS`.
 
 ## Volumes
 
-
 | Volume             | Container path              | Description                             |
 | -------------------- | ----------------------------- | ----------------------------------------- |
-| Steam install path | /mnt/vrising/server         | the server files are downloaded into this directory on the first start |
-| Saves & settings | /mnt/vrising/persistentdata | server configuration and saves |
-| Mods | /mnt/vrising/mods | mods will be copied from this directory to Steam install path on start up, old mods on the Steam install path are removed |
+| Steam install path | /mnt/vrising/server         | Game files (SteamCMD download) |
+| Saves & settings | /mnt/vrising/persistentdata | Server configuration and saves |
+| Mods | /mnt/vrising/mods | BepInEx pack, plugins, and **persistent mod configs** (synced on each start) |
 
 ## Server list
 
-1. In order for the server to appear in the server list, it appears that you need to enable both `"ListOnSteam": true,` and `"ListOnEOS": true`  settings, it appears that you need both, even your game is on Steam.
-2. The ports should be in 27015-27050 Steam range
-3. Your router/firewall should be configured correctly
+1. Enable `"ListOnSteam": true` and `"ListOnEOS": true` in settings (both appear required even on Steam).
+2. Use ports in the 27015–27050 Steam range.
+3. Configure router/firewall for UDP.
 
 ## Server configuration
 
-When the container starts for the first time it will copy the default server settings to the Saves & settings volume, in the  `Settings` subdirectory. Edit `ServerHostSettings.json` file there if you want to change the ports, descriptions etc., please refer to the very first link in this readme for more details. You will have to restart the container for the changes to be picked up.
+On first start, default settings are copied to `data/Settings/`. Edit `ServerHostSettings.json` there for ports, description, etc. Restart the container to apply changes.
 
 ## Mods support
 
-> [!NOTE]  
-> As of the time of writing (19 May 2025) the mods for V Rising in general (not just for this docker image) are in beta for the game 1.1 Oakveil release. I've tested a few mods with the beta BepInEx release, and it worked fine. The community is working on making necessary changes to make the modding framework working with the update. You can follow [V Rising Mod Discord](https://discord.com/invite/QG2FmueAG9) for the updates.
-
-When the container starts, first, before starting the server, the container removes old mods from the Steam install path, and then, if `ENABLE_MODS` environment variable is enabled, it copies the mods from the Mods volume. The following files and directories are removed and then copied. Those files and directories are expected to appear in the mods volume if `ENABLE_MODS` is set.
+When `ENABLE_MODS` is set, the entrypoint removes old mod files from the game install, **copies configs from `server/BepInEx/config/` into `mods/BepInEx/config/`**, then copies the full mod stack from `mods/` back into the server directory:
 
 - BepInEx (directory)
 - dotnet (directory)
 - doorstop_config.ini (file)
 - winhttp.dll (file)
 
-This directory structure is based on <https://thunderstore.io/c/v-rising/p/BepInEx/BepInExPack_V_Rising/>, which I tested this setup with.
+Layout matches [BepInExPack_V_Rising](https://thunderstore.io/c/v-rising/p/BepInEx/BepInExPack_V_Rising/).
 
-One suggested workflow for getting the mods running is the following:
+Suggested r2modman workflow:
 
-- Use [r2modman](https://github.com/ebkr/r2modmanPlus) to select and install those mods, you want on the server locally
-- In the Settings => Profile section select "Export profile as file", this will allow you to export an `.rdz` file
-- Transfer this file onto your server where you are running this docker container
-- Use [r2modman-headless](https://github.com/mpawlowski/r2modman-headless) to install the mods into the mods directory that you mapped to the docker volume
+- Use [r2modman](https://github.com/ebkr/r2modmanPlus) locally to pick mods, export profile as `.rdz`
+- On the server, install with [r2modman-headless](https://github.com/mpawlowski/r2modman-headless):
 
 ```bash
 r2modman-headless --install-dir=./mods \
@@ -88,33 +201,13 @@ r2modman-headless --install-dir=./mods \
   --work-dir /tmp
 ```
 
-Here `vrising-server.r2z` is the file you exported on a previous step and `./mods` is the path to the docker volume mapped mods directory.
+Set `[Logging.Console] Enabled = false` in `mods/BepInEx/config/BepInEx.cfg`.
 
-- **Important:** In `mods/BepInEx/config/BepInEx.cfg`, under `[Logging.Console]` change `Enabled` to `false`
-- Set the `ENABLE_MODS` environment variable and start your docker container. If you are using docker compose I suggest running `docker compose up -d --force-recreate` to restart it.
-- Once the server is up and running with mods (I noticed it takes considerably more time to start with mods enabled, in vicinity of 5 more minutes), most of the mods will create configuration files under the Steam install path in `BepInEx/config` directory. You will want to copy all those files over to your mods directory, since they will be lost on then server restart otherwise. Make the desired changes, if any, in those copied configs, and restart the container again
+Follow [V Rising Mod Discord](https://discord.com/invite/QG2FmueAG9) for modding updates.
 
-Of course this workflow is just a suggestion, you can use any method of managing mods you want
+## RCON — Optional
 
-## Docker CLI
-
-```bash
-docker run -d --name='vrising' \
---net='bridge' \
---init \
---restart=unless-stopped \
--e SERVERNAME="My V Rising Server" \
--v '/path/on/host/server':'/mnt/vrising/server' \
--v '/path/on/host/persistentdata':'/mnt/vrising/persistentdata' \
--v '/path/on/host/mods':'/mnt/vrising/mods' \
--p 9876:9876/udp \
--p 9877:9877/udp \
-'andrewsav/vrising'
-```
-
-## RCON <small>- Optional</small>
-
-To enable RCON edit `ServerHostSettings.json` and paste following lines after `QueryPort`. To communicate using RCON protocol use the [RCON CLI](https://github.com/gorcon/rcon-cli). You will also need to expose the port via docker compose or docker CLI.
+Edit `data/Settings/ServerHostSettings.json` and add after `QueryPort`. Expose the port in compose or `docker run`. Use [RCON CLI](https://github.com/gorcon/rcon-cli) to connect.
 
 ```json
 "Rcon": {
@@ -124,17 +217,6 @@ To enable RCON edit `ServerHostSettings.json` and paste following lines after `Q
 },
 ```
 
-## Differences with TrueOsiris server
-
-This repository is based of the [TrueOsiris](https://github.com/TrueOsiris/docker-vrising) work. If the original container works well for you, you should stick with it. The reason I forked it, is because I wanted to add mod support, but as I was working on it I was doing more and more changes, that were unlikely to be merged into the original repository: I value simplicity over "more features", so basically I removed quite a bit of things, that some people might find valueable.
-
-The mod support hopefully will be added to TureOsiris image, and at that stage there will be few reasons to use this one over the original one. Changes are:
-
-- Uses winehq for wine, version 9 as for the time of writing. The original one uses version 7, however, there is a winehq label on the original docker repo
-- Docker logs and V Rising sever logs are not mixed up interleaved in the docker log. V Rising server logs are in a separate file. Incidentally I also removed old logs clean up on start up, because, IMO if it's done it should be done on schedule and not by the container itself
-- I removed all the custom environment variables because they duplicate the ones providing by V Rising server itself and thus are redundant
-- I removed "graceful termination",  because I believe that's something that should be handled properly by the docker itself. I added `exec` to invoke wine to make it top level process and added `init` for signals propagation / reaping. I believe this should be sufficient for graceful termination, while being simpler
-
 ## Credits
 
-- https://github.com/TrueOsiris/docker-vrising
+- Forked from [AndrewSav/vrising-docker](https://github.com/AndrewSav/vrising-docker), based on [TrueOsiris/docker-vrising](https://github.com/TrueOsiris/docker-vrising)
