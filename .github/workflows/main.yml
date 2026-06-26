@@ -27,4 +27,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: andrewsav/vrising:${{ env.VERSION }},andrewsav/vrising:latest
+          tags: scheissegalo/vrising:${{ env.VERSION }},scheissegalo/vrising:latest
